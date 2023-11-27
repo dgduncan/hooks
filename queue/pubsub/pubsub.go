@@ -14,17 +14,44 @@ import (
 )
 
 type Hook struct {
-	onStartedTopic             *pubsub.Topic
-	onStoppedTopic             *pubsub.Topic
-	onConnectAuthenticateTopic *pubsub.Topic
-	onACLCheckTopic            *pubsub.Topic
-	// onConnectTopic            *pubsub.Topic
-	// onDisconnectTopic         *pubsub.Topic
-	// onSessionEstablishedTopic *pubsub.Topic
-	// onPublishedTopic          *pubsub.Topic
-	// onSubscribedTopic         *pubsub.Topic
-	// onUnsubscribedTopic       *pubsub.Topic
-	// onWillSentTopic           *pubsub.Topic
+	onStartedTopic              *pubsub.Topic
+	onStoppedTopic              *pubsub.Topic
+	onConnectAuthenticateTopic  *pubsub.Topic
+	onACLCheckTopic             *pubsub.Topic
+	onSysInfoTick               *pubsub.Topic
+	onConnectTopic              *pubsub.Topic
+	onSessionEstablishTopic     *pubsub.Topic
+	onSessionEstablishedTopic   *pubsub.Topic
+	onDisconnectTopic           *pubsub.Topic
+	onAuthPacketTopic           *pubsub.Topic
+	onPacketReadTopic           *pubsub.Topic
+	onPacketEncodeTopic         *pubsub.Topic
+	onPacketSentTopic           *pubsub.Topic
+	onPacketProcessedTopic      *pubsub.Topic
+	onSubscribeTopic            *pubsub.Topic
+	onSubscribedTopic           *pubsub.Topic
+	onSelectSubscribersTopic    *pubsub.Topic
+	onUnsubscribeTopic          *pubsub.Topic
+	onUnsubscribedTopic         *pubsub.Topic
+	onPublishTopic              *pubsub.Topic
+	onPublishedTopic            *pubsub.Topic
+	onPublishDroppedTopic       *pubsub.Topic
+	onRetainMessageTopic        *pubsub.Topic
+	onRetainedMessageTopic      *pubsub.Topic
+	onQosPublishTopic           *pubsub.Topic
+	onQosCompleteTopic          *pubsub.Topic
+	onQosDroppedTopic           *pubsub.Topic
+	onPacketIDExhaustedTopic    *pubsub.Topic
+	onWillTopic                 *pubsub.Topic
+	onWillSentTopic             *pubsub.Topic
+	onClientExpiredTopic        *pubsub.Topic
+	onRetainedExpiredTopic      *pubsub.Topic
+	storedClientsTopic          *pubsub.Topic
+	storedSubscriptionsTopic    *pubsub.Topic
+	storedInflightMessagesTopic *pubsub.Topic
+	storedRetainedMessagesTopic *pubsub.Topic
+	storedSysInfoTopic          *pubsub.Topic
+
 	ignoreList []string
 	mqtt.HookBase
 }
