@@ -10,11 +10,14 @@ import (
 	"cloud.google.com/go/pubsub"
 	messages "github.com/mochi-mqtt/hooks/queue"
 	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/packets"
 )
 
-type PubsubMessagingHook struct {
-	onStartedTopic *pubsub.Topic
-	onStoppedTopic *pubsub.Topic
+type Hook struct {
+	onStartedTopic             *pubsub.Topic
+	onStoppedTopic             *pubsub.Topic
+	onConnectAuthenticateTopic *pubsub.Topic
+	onACLCheckTopic            *pubsub.Topic
 	// onConnectTopic            *pubsub.Topic
 	// onDisconnectTopic         *pubsub.Topic
 	// onSessionEstablishedTopic *pubsub.Topic
@@ -22,13 +25,15 @@ type PubsubMessagingHook struct {
 	// onSubscribedTopic         *pubsub.Topic
 	// onUnsubscribedTopic       *pubsub.Topic
 	// onWillSentTopic           *pubsub.Topic
-	// disallowlist              []string
+	ignoreList []string
 	mqtt.HookBase
 }
 
-type PubsubMessagingHookConfig struct {
-	OnStartedTopic *pubsub.Topic
-	OnStoppedTopic *pubsub.Topic
+type Options struct {
+	OnStartedTopic             *pubsub.Topic
+	OnStoppedTopic             *pubsub.Topic
+	OnConnectAuthenticateTopic *pubsub.Topic
+	OnACLCheckTopic            *pubsub.Topic
 	// OnConnectTopic            *pubsub.Topic
 	// OnDisconnectTopic         *pubsub.Topic
 	// OnSessionEstablishedTopic *pubsub.Topic
@@ -36,17 +41,19 @@ type PubsubMessagingHookConfig struct {
 	// OnSubscribedTopic         *pubsub.Topic
 	// OnUnubscribedTopic        *pubsub.Topic
 	// OnWillSentTopic           *pubsub.Topic
-	// DisallowList              []string
+	IgnoreList []string
 }
 
-func (pmh *PubsubMessagingHook) ID() string {
+func (pmh *Hook) ID() string {
 	return "queue-pubsub-hook"
 }
 
-func (pmh *PubsubMessagingHook) Provides(b byte) bool {
+func (pmh *Hook) Provides(b byte) bool {
 	return bytes.Contains([]byte{
 		mqtt.OnStarted,
 		mqtt.OnStopped,
+		mqtt.OnConnectAuthenticate,
+		mqtt.OnACLCheck,
 		// mqtt.OnConnect,
 		// mqtt.OnDisconnect,
 		// mqtt.OnSessionEstablished,
@@ -57,22 +64,25 @@ func (pmh *PubsubMessagingHook) Provides(b byte) bool {
 	}, []byte{b})
 }
 
-func (pmh *PubsubMessagingHook) Init(config any) error {
+func (pmh *Hook) Init(config any) error {
 	if config == nil {
 		return errors.New("nil config")
 	}
 
-	pmhc, ok := config.(PubsubMessagingHookConfig)
+	pmhc, ok := config.(Options)
 	if !ok {
 		return errors.New("improper config")
 	}
 
-	// if pmhc.DisallowList == nil {
-	// 	return errors.New("nil disallowlist")
-	// }
+	if pmhc.IgnoreList == nil {
+		pmh.Log.Debug("nil ignoreList, creating empty slice")
+		pmhc.IgnoreList = make([]string, 0) // would this be better as a map?
+	}
 
 	pmh.onStartedTopic = pmhc.OnStartedTopic
 	pmh.onStoppedTopic = pmhc.OnStoppedTopic
+	pmh.onConnectAuthenticateTopic = pmhc.OnConnectAuthenticateTopic
+	pmh.onACLCheckTopic = pmhc.OnACLCheckTopic
 	// pmh.onConnectTopic = pmhc.OnConnectTopic
 	// pmh.onDisconnectTopic = pmhc.OnDisconnectTopic
 	// pmh.onSessionEstablishedTopic = pmhc.OnSessionEstablishedTopic
@@ -85,28 +95,58 @@ func (pmh *PubsubMessagingHook) Init(config any) error {
 	return nil
 }
 
-func (pmh *PubsubMessagingHook) OnStarted() {
+func (pmh *Hook) OnStarted() {
 	if pmh.onStartedTopic == nil {
+		pmh.Log.Debug("onStartedTopic is nil, returning early")
 		return
 	}
 
 	if err := publish(pmh.onStartedTopic, messages.OnStarted{
 		Timestamp: time.Now().UTC(),
 	}); err != nil {
-		// pmh.Log.Err(err).Msg("")
+		pmh.Log.Error("error publishing OnStarted message to topic", "error", err)
 	}
 }
 
-func (pmh *PubsubMessagingHook) OnStopped() {
+func (pmh *Hook) OnStopped() {
 	if pmh.onStoppedTopic == nil {
+		pmh.Log.Debug("onStoppedTopic is nil, returning early")
 		return
 	}
 
 	if err := publish(pmh.onStoppedTopic, messages.OnStopped{
 		Timestamp: time.Now().UTC(),
 	}); err != nil {
-		// pmh.Log.Err(err).Msg("")
+		pmh.Log.Error("error publishing OnStopped message to topic", "error", err)
 	}
+}
+
+func (pmh *Hook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
+	if pmh.onConnectAuthenticateTopic == nil {
+		pmh.Log.Debug("onConnectAuthenticateTopic is nil, returning early")
+		return true
+	}
+
+	if pmh.checkIgnored(string(cl.Properties.Username)) {
+		pmh.Log.Debug("username is ignored, returning early")
+		return true
+	}
+
+	return true
+}
+
+func (pmh *Hook) OnACLCheck(cl *mqtt.Client, pk packets.Packet) bool {
+	if pmh.onConnectAuthenticateTopic == nil {
+		pmh.Log.Debug("onConnectAuthenticateTopic is nil, returning early")
+		return true
+	}
+
+	if pmh.checkIgnored(string(cl.Properties.Username)) {
+		pmh.Log.Debug("username is ignored, returning early")
+		return true
+	}
+
+	return true
 }
 
 // func (pmh *PubsubMessagingHook) OnUnsubscribed(cl *mqtt.Client, pk packets.Packet) {
@@ -251,12 +291,20 @@ func (pmh *PubsubMessagingHook) OnStopped() {
 // 	return true
 // }
 
+func (pmh *Hook) checkIgnored(username string) bool {
+	for _, ignoredUsername := range pmh.ignoreList {
+		if username == ignoredUsername {
+			return true
+		}
+	}
+	return false
+}
+
 func publish(topic *pubsub.Topic, data any) error {
-	ctx := context.Background()
 	b, _ := json.Marshal(data)
 
 	// TODO : add options to store response for later
-	topic.Publish(ctx, &pubsub.Message{
+	topic.Publish(context.TODO(), &pubsub.Message{
 		Data: b,
 	})
 

@@ -9,6 +9,12 @@ type OnStopped struct {
 	Timestamp time.Time
 }
 
+type OnConnectAuthenticate struct {
+	ClientID  string    `json:"client_id"`
+	Username  string    `json:"username"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 type OnPublished struct {
 	ClientID  string    `json:"client_id"`
 	Topic     string    `json:"topic"`
