@@ -11,6 +11,7 @@ import (
 	messages "github.com/mochi-mqtt/hooks/queue"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
+	"github.com/mochi-mqtt/server/v2/system"
 )
 
 type Hook struct {
@@ -18,7 +19,7 @@ type Hook struct {
 	onStoppedTopic              *pubsub.Topic
 	onConnectAuthenticateTopic  *pubsub.Topic
 	onACLCheckTopic             *pubsub.Topic
-	onSysInfoTick               *pubsub.Topic
+	onSysInfoTickTopic          *pubsub.Topic
 	onConnectTopic              *pubsub.Topic
 	onSessionEstablishTopic     *pubsub.Topic
 	onSessionEstablishedTopic   *pubsub.Topic
@@ -162,14 +163,41 @@ func (pmh *Hook) Init(config any) error {
 	pmh.onStoppedTopic = pmhc.OnStoppedTopic
 	pmh.onConnectAuthenticateTopic = pmhc.OnConnectAuthenticateTopic
 	pmh.onACLCheckTopic = pmhc.OnACLCheckTopic
-	// pmh.onConnectTopic = pmhc.OnConnectTopic
-	// pmh.onDisconnectTopic = pmhc.OnDisconnectTopic
-	// pmh.onSessionEstablishedTopic = pmhc.OnSessionEstablishedTopic
-	// pmh.onPublishedTopic = pmhc.OnPublishedTopic
-	// pmh.onSubscribedTopic = pmhc.OnSubscribedTopic
-	// pmh.onUnsubscribedTopic = pmhc.OnUnubscribedTopic
-	// pmh.onWillSentTopic = pmhc.OnWillSentTopic
-	// pmh.disallowlist = pmhc.DisallowList
+	pmh.onSysInfoTick = pmhc.OnSysInfoTick
+	pmh.onConnectTopic = pmhc.OnConnectTopic
+	pmh.onSessionEstablishTopic = pmhc.OnSessionEstablishTopic
+	pmh.onSessionEstablishedTopic = pmhc.OnSessionEstablishedTopic
+	pmh.onDisconnectTopic = pmhc.OnDisconnectTopic
+	pmh.onAuthPacketTopic = pmhc.OnAuthPacketTopic
+	pmh.onPacketReadTopic = pmhc.OnPacketReadTopic
+	pmh.onPacketEncodeTopic = pmhc.OnPacketEncodeTopic
+	pmh.onPacketSentTopic = pmhc.OnPacketSentTopic
+	pmh.onPacketProcessedTopic = pmhc.OnPacketProcessedTopic
+	pmh.onSubscribeTopic = pmhc.OnSubscribeTopic
+	pmh.onSubscribedTopic = pmhc.OnSubscribedTopic
+	pmh.onSelectSubscribersTopic = pmhc.OnSelectSubscribersTopic
+	pmh.onUnsubscribeTopic = pmhc.OnUnsubscribeTopic
+	pmh.onUnsubscribedTopic = pmhc.OnUnsubscribedTopic
+	pmh.onPublishTopic = pmhc.OnPublishTopic
+	pmh.onPublishedTopic = pmhc.OnPublishedTopic
+	pmh.onPublishDroppedTopic = pmhc.OnPublishDroppedTopic
+	pmh.onRetainMessageTopic = pmhc.OnRetainMessageTopic
+	pmh.onRetainPublishTopic = pmhc.OnRetainPublishTopic
+	pmh.onQosPublishTopic = pmhc.OnQosPublishTopic
+	pmh.onQosCompleteTopic = pmhc.OnQosCompleteTopic
+	pmh.onQosDroppedTopic = pmhc.OnQosDroppedTopic
+	pmh.onPacketIDExhaustedTopic = pmhc.OnPacketIDExhaustedTopic
+	pmh.onWillTopic = pmhc.OnWillTopic
+	pmh.onWillSentTopic = pmhc.OnWillSentTopic
+	pmh.onClientExpiredTopic = pmhc.OnClientExpiredTopic
+	pmh.onRetainedExpiredTopic = pmhc.OnRetainedExpiredTopic
+	pmh.storedClientsTopic = pmhc.StoredClientsTopic
+	pmh.storedSubscriptionsTopic = pmhc.StoredSubscriptionsTopic
+	pmh.storedInflightMessagesTopic = pmhc.StoredInflightMessagesTopic
+	pmh.storedRetainedMessagesTopic = pmhc.StoredRetainedMessagesTopic
+	pmh.storedSysInfoTopic = pmhc.StoredSysInfoTopic
+
+	pmh.ignoreList = pmhc.IgnoreList
 
 	return nil
 }
@@ -207,7 +235,6 @@ func (pmh *Hook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool 
 	}
 
 	if pmh.checkIgnored(string(cl.Properties.Username)) {
-		pmh.Log.Debug("username is ignored, returning early")
 		return true
 	}
 
@@ -221,11 +248,19 @@ func (pmh *Hook) OnACLCheck(cl *mqtt.Client, pk packets.Packet) bool {
 	}
 
 	if pmh.checkIgnored(string(cl.Properties.Username)) {
-		pmh.Log.Debug("username is ignored, returning early")
 		return true
 	}
 
 	return true
+}
+
+func (pmh *Hook) OnSysInfoTick(sys *system.Info) {
+	if pmh.onSysInfoTickTopic == nil {
+		pmh.Log.Debug("onSysInfoTickTopic is nil, returning early")
+		return
+	}
+
+	return
 }
 
 // func (pmh *PubsubMessagingHook) OnUnsubscribed(cl *mqtt.Client, pk packets.Packet) {
@@ -268,23 +303,24 @@ func (pmh *Hook) OnACLCheck(cl *mqtt.Client, pk packets.Packet) bool {
 // 	}
 // }
 
-// func (pmh *PubsubMessagingHook) OnConnect(cl *mqtt.Client, pk packets.Packet) {
-// 	if pmh.onConnectTopic == nil {
-// 		return
-// 	}
+func (pmh *Hook) OnConnect(cl *mqtt.Client, pk packets.Packet) {
+	if pmh.onConnectTopic == nil {
+		pmh.Log.Debug("onConnectTopic is nil, returning early")
+		return
+	}
 
-// 	if !pmh.checkAllowed(string(cl.Properties.Username)) {
-// 		return
-// 	}
+	if pmh.checkIgnored(string(cl.Properties.Username)) {
+		return
+	}
 
-// 	if err := publish(pmh.onConnectTopic, OnConnectMessage{
-// 		ClientID:  cl.ID,
-// 		Username:  string(cl.Properties.Username),
-// 		Timestamp: time.Now(),
-// 	}); err != nil {
-// 		// pmh.Log.Err(err).Msg("")
-// 	}
-// }
+	if err := publish(pmh.onConnectTopic, messages.OnConnect{
+		ClientID:  cl.ID,
+		Username:  string(cl.Properties.Username),
+		Timestamp: time.Now(),
+	}); err != nil {
+		// pmh.Log.Err(err).Msg("")
+	}
+}
 
 // func (pmh *PubsubMessagingHook) OnSessionEstablished(cl *mqtt.Client, pk packets.Packet) {
 // 	if pmh.onSessionEstablishedTopic == nil {
@@ -373,6 +409,7 @@ func (pmh *Hook) OnACLCheck(cl *mqtt.Client, pk packets.Packet) bool {
 func (pmh *Hook) checkIgnored(username string) bool {
 	for _, ignoredUsername := range pmh.ignoreList {
 		if username == ignoredUsername {
+			pmh.Log.Debug("username is ignored, returning early")
 			return true
 		}
 	}
@@ -383,9 +420,11 @@ func publish(topic *pubsub.Topic, data any) error {
 	b, _ := json.Marshal(data)
 
 	// TODO : add options to store response for later
-	topic.Publish(context.TODO(), &pubsub.Message{
+	result := topic.Publish(context.TODO(), &pubsub.Message{
 		Data: b,
 	})
+
+	result.Get()
 
 	return nil
 }
