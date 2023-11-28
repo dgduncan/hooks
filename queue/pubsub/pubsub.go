@@ -37,7 +37,7 @@ type Hook struct {
 	onPublishedTopic            *pubsub.Topic
 	onPublishDroppedTopic       *pubsub.Topic
 	onRetainMessageTopic        *pubsub.Topic
-	onRetainedMessageTopic      *pubsub.Topic
+	onRetainPublishTopic        *pubsub.Topic
 	onQosPublishTopic           *pubsub.Topic
 	onQosCompleteTopic          *pubsub.Topic
 	onQosDroppedTopic           *pubsub.Topic
@@ -57,18 +57,44 @@ type Hook struct {
 }
 
 type Options struct {
-	OnStartedTopic             *pubsub.Topic
-	OnStoppedTopic             *pubsub.Topic
-	OnConnectAuthenticateTopic *pubsub.Topic
-	OnACLCheckTopic            *pubsub.Topic
-	// OnConnectTopic            *pubsub.Topic
-	// OnDisconnectTopic         *pubsub.Topic
-	// OnSessionEstablishedTopic *pubsub.Topic
-	// OnPublishedTopic          *pubsub.Topic
-	// OnSubscribedTopic         *pubsub.Topic
-	// OnUnubscribedTopic        *pubsub.Topic
-	// OnWillSentTopic           *pubsub.Topic
-	IgnoreList []string
+	OnStartedTopic              *pubsub.Topic
+	OnStoppedTopic              *pubsub.Topic
+	OnConnectAuthenticateTopic  *pubsub.Topic
+	OnACLCheckTopic             *pubsub.Topic
+	OnSysInfoTick               *pubsub.Topic
+	OnConnectTopic              *pubsub.Topic
+	OnSessionEstablishTopic     *pubsub.Topic
+	OnSessionEstablishedTopic   *pubsub.Topic
+	OnDisconnectTopic           *pubsub.Topic
+	OnAuthPacketTopic           *pubsub.Topic
+	OnPacketReadTopic           *pubsub.Topic
+	OnPacketEncodeTopic         *pubsub.Topic
+	OnPacketSentTopic           *pubsub.Topic
+	OnPacketProcessedTopic      *pubsub.Topic
+	OnSubscribeTopic            *pubsub.Topic
+	OnSubscribedTopic           *pubsub.Topic
+	OnSelectSubscribersTopic    *pubsub.Topic
+	OnUnsubscribeTopic          *pubsub.Topic
+	OnUnsubscribedTopic         *pubsub.Topic
+	OnPublishTopic              *pubsub.Topic
+	OnPublishedTopic            *pubsub.Topic
+	OnPublishDroppedTopic       *pubsub.Topic
+	OnRetainMessageTopic        *pubsub.Topic
+	OnRetainPublishTopic        *pubsub.Topic
+	OnQosPublishTopic           *pubsub.Topic
+	OnQosCompleteTopic          *pubsub.Topic
+	OnQosDroppedTopic           *pubsub.Topic
+	OnPacketIDExhaustedTopic    *pubsub.Topic
+	OnWillTopic                 *pubsub.Topic
+	OnWillSentTopic             *pubsub.Topic
+	OnClientExpiredTopic        *pubsub.Topic
+	OnRetainedExpiredTopic      *pubsub.Topic
+	StoredClientsTopic          *pubsub.Topic
+	StoredSubscriptionsTopic    *pubsub.Topic
+	StoredInflightMessagesTopic *pubsub.Topic
+	StoredRetainedMessagesTopic *pubsub.Topic
+	StoredSysInfoTopic          *pubsub.Topic
+	IgnoreList                  []string
 }
 
 func (pmh *Hook) ID() string {
@@ -81,13 +107,39 @@ func (pmh *Hook) Provides(b byte) bool {
 		mqtt.OnStopped,
 		mqtt.OnConnectAuthenticate,
 		mqtt.OnACLCheck,
-		// mqtt.OnConnect,
-		// mqtt.OnDisconnect,
-		// mqtt.OnSessionEstablished,
-		// mqtt.OnPublished,
-		// mqtt.OnSubscribed,
-		// mqtt.OnUnsubscribed,
-		// mqtt.OnWillSent,
+		mqtt.OnSysInfoTick,
+		mqtt.OnConnect,
+		mqtt.OnSessionEstablish,
+		mqtt.OnSessionEstablished,
+		mqtt.OnDisconnect,
+		mqtt.OnAuthPacket,
+		mqtt.OnPacketRead,
+		mqtt.OnPacketEncode,
+		mqtt.OnPacketSent,
+		mqtt.OnPacketProcessed,
+		mqtt.OnSubscribe,
+		mqtt.OnSubscribed,
+		mqtt.OnSelectSubscribers,
+		mqtt.OnUnsubscribe,
+		mqtt.OnUnsubscribed,
+		mqtt.OnPublish,
+		mqtt.OnPublished,
+		mqtt.OnPublishDropped,
+		mqtt.OnRetainMessage,
+		mqtt.OnRetainPublished,
+		mqtt.OnQosPublish,
+		mqtt.OnQosComplete,
+		mqtt.OnQosDropped,
+		mqtt.OnPacketIDExhausted,
+		mqtt.OnWill,
+		mqtt.OnWillSent,
+		mqtt.OnClientExpired,
+		mqtt.OnRetainedExpired,
+		mqtt.StoredClients,
+		mqtt.StoredSubscriptions,
+		mqtt.StoredInflightMessages,
+		mqtt.StoredRetainedMessages,
+		mqtt.StoredSysInfo,
 	}, []byte{b})
 }
 
